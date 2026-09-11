@@ -167,6 +167,14 @@
     .hidden {
       display: none;
     }
+
+    .distance-panel { margin: 20px 0; padding: 16px; border: 1px solid #94a3b8; border-radius: 12px; }
+    .distance-panel h2 { font-size: 16px; margin: 0 0 10px; }
+    .distance-value { font-size: 28px; font-weight: 800; overflow-wrap: anywhere; }
+    .distance-panel p { font-size: 13px; line-height: 1.5; }
+    .distance-panel .distance-note { font-size: 12px; opacity: .8; }
+    #distanceButton { background: #2563eb; color: white; }
+
   </style>
 </head>
 
@@ -181,6 +189,15 @@
       <p class="subtitle">
         Bluetooth ile bulunduğunuz konumu doğrulayın.
       </p>
+      <section class="distance-panel" aria-labelledby="distanceTitle">
+        <h2 id="distanceTitle">ESP32’ye uzaklık</h2>
+        <div id="distanceValue" class="distance-value" role="status" aria-live="polite">Henüz ölçülmedi</div>
+        <p id="distanceDetail">Mesafeyi görmek için konum erişimine izin verin.</p>
+        <button id="distanceButton" type="button">Mesafeyi göster</button>
+        <p class="distance-note">Telefon konumuna göre kuş uçuşu yaklaşık mesafe. Kapalı alanda ve kısa mesafelerde sapma olabilir.</p>
+        <p class="distance-note">Sabit ESP32 konumu: 36.547098, 31.994394</p>
+      </section>
+
 
       <label for="employeeName">
         Personel Adı
@@ -745,6 +762,6 @@ if (!window.isSecureContext) {
 }
 </script>
 
+<script src="web/distance.js"></script>
 </body>
 </html>
-```

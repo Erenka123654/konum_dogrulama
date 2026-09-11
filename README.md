@@ -60,3 +60,19 @@ mesafe/RSSI hesabı yapmak yerine sadece "bağlanabildi mi" kontrolü yapar —
 bu, gürültülü RSSI ölçümüne göre çok daha güvenilirdir. Menzili daraltmak
 isterseniz ESP32'nin TX güç seviyesini düşürebilirsiniz
 (`esp_ble_tx_power_set` fonksiyonu ile).
+
+## Ana sayfada ESP32 mesafesi
+
+Her iki giriş sayfasında Mesafeyi göster düğmesi telefonun konum iznini ister.
+Sabit hedef: **36.547098, 31.994394**. Cihaz taşınırsa web/distance.js içindeki
+ target koordinatlarını güncelleyin. Bu hedef tek ESP32 içindir; Bluetooth ile
+okunan diğer konum kimlikleri hedefi değiştirmez.
+
+Mesafe Haversine hesabıyla kuş uçuşu metre olarak güncellenir. Konum doğruluğu
+ve ölçüm saati ayrıca gösterilir. 30 saniyeden eski ölçüm güncel diye gösterilmez.
+Bu gösterge Bluetooth check-in kararını değiştirmez; telefon koordinatları
+sunucuya gönderilmez. HTTPS ve konum izni gerekir. Kapalı alanlarda ve kısa
+mesafelerde telefon konumu hassas olmayabilir.
+
+Yayınlarken index.html ile web/distance.js dosyasını birlikte yükleyin.
+web/ klasörünü yayınlıyorsanız içindeki index.html ve distance.js birlikte bulunmalıdır.
