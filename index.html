@@ -1,0 +1,751 @@
+```html
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <meta
+    name="description"
+    content="Bluetooth tabanlı konum doğrulama ve personel check-in sistemi"
+  >
+
+  <title>Konum Doğrulama</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      background: #f4f7fb;
+      color: #172033;
+    }
+
+    .container {
+      width: min(92%, 520px);
+      margin: 0 auto;
+      padding: 32px 0;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      text-align: center;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      text-align: center;
+      color: #687386;
+      font-size: 14px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #d7dce5;
+      border-radius: 10px;
+      font-size: 16px;
+      outline: none;
+      margin-bottom: 16px;
+    }
+
+    input:focus {
+      border-color: #2563eb;
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 11px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: 0.2s;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .primary:hover:not(:disabled) {
+      background: #1d4ed8;
+    }
+
+    .secondary {
+      background: #e9eef7;
+      color: #172033;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .status.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status.info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .location-box {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .location-title {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 5px;
+    }
+
+    .location-value {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .footer {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 12px;
+      margin-top: 18px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="container">
+
+    <section class="card">
+
+      <h1>Konum Doğrulama</h1>
+
+      <p class="subtitle">
+        Bluetooth ile bulunduğunuz konumu doğrulayın.
+      </p>
+
+      <label for="employeeName">
+        Personel Adı
+      </label>
+
+      <input
+        id="employeeName"
+        type="text"
+        placeholder="Ad Soyad"
+        autocomplete="name"
+      >
+
+      <button
+        id="connectButton"
+        class="primary"
+        type="button"
+      >
+        📡 Bluetooth ile Konumu Doğrula
+      </button>
+
+      <button
+        id="resetButton"
+        class="secondary"
+        type="button"
+      >
+        Temizle
+      </button>
+
+      <div
+        id="locationBox"
+        class="location-box hidden"
+      >
+        <div class="location-title">
+          Algılanan Konum
+        </div>
+
+        <div
+          id="locationValue"
+          class="location-value"
+        >
+          -
+        </div>
+      </div>
+
+      <div
+        id="status"
+        class="status info"
+      >
+        Hazır. Bluetooth ile konum doğrulamasını başlatabilirsiniz.
+      </div>
+
+      <div class="footer">
+        Konum doğrulama sistemi
+      </div>
+
+    </section>
+
+  </main>
+
+<script>
+"use strict";
+
+/*
+ * ============================================================
+ * API AYARLARI
+ * ============================================================
+ */
+
+const API_ORIGIN =
+  "https://esp32-checkin-backend.erenkaraca2005.workers.dev";
+
+const CHECKIN_ENDPOINT =
+  API_ORIGIN + "/checkin";
+
+const CHECKINS_ENDPOINT =
+  API_ORIGIN + "/checkins";
+
+
+/*
+ * ============================================================
+ * BLE AYARLARI
+ * ============================================================
+ *
+ * ESP32 firmware ile aynı UUID'ler kullanılmalıdır.
+ */
+
+const SERVICE_UUID =
+  "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+
+const LOCATION_CHAR_UUID =
+  "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+
+
+/*
+ * ============================================================
+ * HTML ELEMANLARI
+ * ============================================================
+ */
+
+const employeeNameInput =
+  document.getElementById("employeeName");
+
+const connectButton =
+  document.getElementById("connectButton");
+
+const resetButton =
+  document.getElementById("resetButton");
+
+const statusElement =
+  document.getElementById("status");
+
+const locationBox =
+  document.getElementById("locationBox");
+
+const locationValue =
+  document.getElementById("locationValue");
+
+
+/*
+ * ============================================================
+ * DURUM MESAJI
+ * ============================================================
+ */
+
+function setStatus(message, type = "info") {
+  statusElement.textContent = message;
+
+  statusElement.className =
+    "status " + type;
+}
+
+
+/*
+ * ============================================================
+ * LOCATION GÖSTER
+ * ============================================================
+ */
+
+function showLocation(locationId) {
+  locationBox.classList.remove("hidden");
+  locationValue.textContent = locationId;
+}
+
+
+/*
+ * ============================================================
+ * BLE DATA OKUMA
+ * ============================================================
+ */
+
+function decodeBluetoothValue(value) {
+  const decoder = new TextDecoder("utf-8");
+
+  return decoder
+    .decode(value)
+    .replace(/\0/g, "")
+    .trim();
+}
+
+
+/*
+ * ============================================================
+ * CHECK-IN API
+ * ============================================================
+ *
+ * ÖNEMLİ:
+ *
+ * Content-Type intentionally text/plain.
+ *
+ * Böylece tarayıcının gereksiz CORS preflight
+ * isteği oluşturmasını engelliyoruz.
+ */
+
+async function sendCheckin(employeeName, locationId) {
+
+  const payload = {
+    employeeName: employeeName,
+    locationId: locationId,
+    source: "web_bluetooth"
+  };
+
+  const response = await fetch(
+    CHECKIN_ENDPOINT,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "text/plain;charset=UTF-8",
+        "Accept": "application/json"
+      },
+
+      body: JSON.stringify(payload)
+    }
+  );
+
+  let data;
+
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error(
+      "Sunucudan geçersiz JSON cevap geldi. HTTP " +
+      response.status
+    );
+  }
+
+  if (!response.ok || !data.ok) {
+    throw new Error(
+      data.error ||
+      ("Sunucu hatası. HTTP " + response.status)
+    );
+  }
+
+  return data;
+}
+
+
+/*
+ * ============================================================
+ * BLUETOOTH KONTROLÜ
+ * ============================================================
+ */
+
+function checkBluetoothSupport() {
+
+  if (!("bluetooth" in navigator)) {
+
+    setStatus(
+      "❌ Bu tarayıcı Web Bluetooth desteklemiyor.\n\n" +
+      "Android üzerinde Chrome veya Edge kullanın.",
+      "error"
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+
+/*
+ * ============================================================
+ * BLE BAĞLANTISI
+ * ============================================================
+ */
+
+async function connectBluetooth() {
+
+  if (!checkBluetoothSupport()) {
+    return;
+  }
+
+  const employeeName =
+    employeeNameInput.value.trim();
+
+  if (!employeeName) {
+
+    setStatus(
+      "⚠️ Lütfen önce personel adını girin.",
+      "error"
+    );
+
+    employeeNameInput.focus();
+
+    return;
+  }
+
+  connectButton.disabled = true;
+
+  locationBox.classList.add("hidden");
+
+  setStatus(
+    "📡 Bluetooth cihazları aranıyor...\n\n" +
+    "Lütfen ESP32 cihazınızı seçin.",
+    "info"
+  );
+
+  try {
+
+    /*
+     * --------------------------------------------------------
+     * BLUETOOTH CİHAZ SEÇ
+     * --------------------------------------------------------
+     */
+
+    const device =
+      await navigator.bluetooth.requestDevice({
+        filters: [
+          {
+            services: [SERVICE_UUID]
+          }
+        ],
+
+        optionalServices: [
+          SERVICE_UUID
+        ]
+      });
+
+
+    setStatus(
+      "🔗 Bluetooth cihazına bağlanılıyor...\n\n" +
+      (device.name || "ESP32"),
+      "info"
+    );
+
+
+    /*
+     * --------------------------------------------------------
+     * GATT BAĞLANTISI
+     * --------------------------------------------------------
+     */
+
+    const server =
+      await device.gatt.connect();
+
+
+    /*
+     * --------------------------------------------------------
+     * SERVICE
+     * --------------------------------------------------------
+     */
+
+    const service =
+      await server.getPrimaryService(
+        SERVICE_UUID
+      );
+
+
+    /*
+     * --------------------------------------------------------
+     * LOCATION CHARACTERISTIC
+     * --------------------------------------------------------
+     */
+
+    const characteristic =
+      await service.getCharacteristic(
+        LOCATION_CHAR_UUID
+      );
+
+
+    /*
+     * --------------------------------------------------------
+     * LOCATION OKU
+     * --------------------------------------------------------
+     */
+
+    setStatus(
+      "📍 Konum bilgisi okunuyor...",
+      "info"
+    );
+
+
+    const value =
+      await characteristic.readValue();
+
+
+    const locationId =
+      decodeBluetoothValue(value);
+
+
+    if (!locationId) {
+
+      throw new Error(
+        "ESP32 konum bilgisi göndermedi."
+      );
+    }
+
+
+    /*
+     * --------------------------------------------------------
+     * KONUMU GÖSTER
+     * --------------------------------------------------------
+     */
+
+    showLocation(locationId);
+
+
+    setStatus(
+      "✅ Bluetooth konumu doğrulandı.\n\n" +
+      "Konum: " + locationId +
+      "\n\n" +
+      "Check-in sunucuya gönderiliyor...",
+      "info"
+    );
+
+
+    /*
+     * --------------------------------------------------------
+     * CLOUDFLARE WORKER'A GÖNDER
+     * --------------------------------------------------------
+     */
+
+    const result =
+      await sendCheckin(
+        employeeName,
+        locationId
+      );
+
+
+    /*
+     * --------------------------------------------------------
+     * BAŞARILI
+     * --------------------------------------------------------
+     */
+
+    setStatus(
+      "✅ Check-in başarıyla kaydedildi.\n\n" +
+      "Personel: " +
+      result.employeeName +
+      "\n" +
+      "Konum: " +
+      result.locationId +
+      "\n" +
+      "Kaynak: " +
+      result.source,
+      "success"
+    );
+
+
+    /*
+     * --------------------------------------------------------
+     * BLUETOOTH BAĞLANTISINI KAPAT
+     * --------------------------------------------------------
+     */
+
+    try {
+
+      if (
+        device.gatt &&
+        device.gatt.connected
+      ) {
+        device.gatt.disconnect();
+      }
+
+    } catch (disconnectError) {
+
+      console.warn(
+        "Bluetooth disconnect hatası:",
+        disconnectError
+      );
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Konum doğrulama hatası:",
+      error
+    );
+
+
+    let message =
+      "❌ İşlem başarısız.";
+
+
+    if (error.name === "NotFoundError") {
+
+      message +=
+        "\n\nBluetooth cihazı seçilmedi.";
+
+    } else if (
+      error.name === "SecurityError"
+    ) {
+
+      message +=
+        "\n\nTarayıcı Bluetooth erişimine izin vermedi.";
+
+    } else if (
+      error.name === "NetworkError"
+    ) {
+
+      message +=
+        "\n\nBluetooth bağlantısı kurulamadı.";
+
+    } else {
+
+      message +=
+        "\n\n" +
+        error.message;
+    }
+
+
+    setStatus(
+      message,
+      "error"
+    );
+
+  } finally {
+
+    connectButton.disabled = false;
+  }
+}
+
+
+/*
+ * ============================================================
+ * TEMİZLE
+ * ============================================================
+ */
+
+function resetPage() {
+
+  employeeNameInput.value = "";
+
+  locationValue.textContent = "-";
+
+  locationBox.classList.add("hidden");
+
+  setStatus(
+    "Hazır. Bluetooth ile konum doğrulamasını başlatabilirsiniz.",
+    "info"
+  );
+}
+
+
+/*
+ * ============================================================
+ * BUTON EVENTLERİ
+ * ============================================================
+ */
+
+connectButton.addEventListener(
+  "click",
+  connectBluetooth
+);
+
+resetButton.addEventListener(
+  "click",
+  resetPage
+);
+
+
+/*
+ * ============================================================
+ * SAYFA AÇILIŞ KONTROLÜ
+ * ============================================================
+ */
+
+if (!window.isSecureContext) {
+
+  setStatus(
+    "⚠️ Bu uygulama HTTPS üzerinden açılmalıdır.\n\n" +
+    "Web Bluetooth yalnızca güvenli bağlantılarda çalışır.",
+    "error"
+  );
+
+} else if (!("bluetooth" in navigator)) {
+
+  setStatus(
+    "⚠️ Bu tarayıcı Web Bluetooth desteklemiyor.\n\n" +
+    "Android Chrome veya Edge kullanın.",
+    "error"
+  );
+
+} else {
+
+  setStatus(
+    "🟢 Sistem hazır.\n\n" +
+    "Personel adını girip Bluetooth ile konum doğrulamasını başlatın.",
+    "info"
+  );
+}
+</script>
+
+</body>
+</html>
+```
