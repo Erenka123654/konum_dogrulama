@@ -3,12 +3,18 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Konum Doğrulamalı Check-in</title>
+  <meta
+    name="description"
+    content="ESP32 Bluetooth Konum Doğrulama ve Personel Check-in Sistemi"
+  >
+
+  <title>ESP32 Konum Doğrulama</title>
 
   <style>
     * {
@@ -16,364 +22,633 @@
     }
 
     body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        Arial,
-        sans-serif;
-
-      background: #0f172a;
-      color: #e2e8f0;
-
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
       display: flex;
       align-items: center;
       justify-content: center;
-
-      min-height: 100vh;
-
-      margin: 0;
       padding: 20px;
     }
 
-    .card {
+    .container {
       width: 100%;
-      max-width: 420px;
+      max-width: 520px;
+    }
 
-      background: #1e293b;
-
+    .card {
+      background: #ffffff;
       border-radius: 18px;
-
-      padding: 30px 24px;
-
+      padding: 30px;
       box-shadow:
-        0 15px 45px rgba(0, 0, 0, 0.4);
+        0 10px 30px rgba(0, 0, 0, 0.08);
     }
 
     h1 {
-      font-size: 21px;
-      margin: 0 0 10px;
+      margin: 0 0 8px;
+      font-size: 27px;
     }
 
-    .sub {
-      color: #94a3b8;
-
+    .subtitle {
+      margin: 0 0 25px;
+      color: #6b7280;
       font-size: 14px;
-
-      line-height: 1.6;
-
-      margin: 0 0 24px;
+      line-height: 1.5;
     }
 
-    .warn-box {
-      background: #422006;
-
-      color: #fde68a;
-
-      font-size: 13px;
-
-      padding: 12px;
-
-      border-radius: 10px;
-
-      margin-bottom: 18px;
-
-      line-height: 1.5;
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 14px;
     }
 
     input {
       width: 100%;
-
       padding: 13px 14px;
-
-      border-radius: 9px;
-
-      border: 1px solid #334155;
-
-      background: #0f172a;
-
-      color: #e2e8f0;
-
-      font-size: 15px;
-
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 16px;
       outline: none;
-
-      margin-bottom: 14px;
+      margin-bottom: 15px;
     }
 
     input:focus {
-      border-color: #3b82f6;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
     }
 
     button {
       width: 100%;
-
-      padding: 14px;
-
       border: 0;
-
-      border-radius: 9px;
-
-      background: #3b82f6;
-
-      color: white;
-
-      font-size: 15px;
-
-      font-weight: 600;
-
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 700;
       cursor: pointer;
+      background: #2563eb;
+      color: white;
+      transition: 0.2s;
     }
 
     button:hover {
-      background: #2563eb;
+      background: #1d4ed8;
     }
 
     button:disabled {
-      background: #475569;
-
       cursor: not-allowed;
+      opacity: 0.6;
     }
 
-    #status {
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
       display: none;
-
-      margin-top: 16px;
-
-      padding: 13px;
-
-      border-radius: 9px;
-
-      font-size: 14px;
-
       line-height: 1.5;
-
+      font-size: 14px;
+      white-space: pre-wrap;
       word-break: break-word;
     }
 
-    .info {
-      display: block !important;
-
-      background: #1e3a5f;
-
-      color: #bfdbfe;
+    .status.info {
+      display: block;
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
     }
 
-    .ok {
-      display: block !important;
-
-      background: #14532d;
-
-      color: #bbf7d0;
+    .status.success {
+      display: block;
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
     }
 
-    .err {
-      display: block !important;
-
-      background: #7f1d1d;
-
-      color: #fecaca;
+    .status.error {
+      display: block;
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
     }
 
     .details {
+      margin-top: 20px;
+      display: none;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 18px;
+    }
+
+    .details div {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 7px 0;
+      font-size: 14px;
+    }
+
+    .details span:first-child {
+      color: #6b7280;
+    }
+
+    .details span:last-child {
+      font-weight: 600;
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .warning {
       margin-top: 18px;
-
-      font-size: 12px;
-
-      color: #64748b;
-
+      padding: 12px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      border-radius: 10px;
+      font-size: 13px;
       line-height: 1.5;
+    }
+
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      margin-right: 6px;
     }
   </style>
 </head>
 
 <body>
 
+<div class="container">
+
   <div class="card">
 
-    <h1>
-      📍 Konum Doğrulamalı Check-in
-    </h1>
+    <h1>📍 Konum Doğrulama</h1>
 
-    <p class="sub">
-      Bulunduğunuz konumdaki ESP32 cihazına
-      Bluetooth ile bağlanarak yoklamanızı
-      onaylayın.
+    <p class="subtitle">
+      ESP32 Bluetooth cihazınızı doğrulayarak personel giriş kaydınızı
+      oluşturun.
     </p>
 
-
-    <!-- Tarayıcı uyarısı -->
-
-    <div
-      id="compatWarning"
-      class="warn-box"
-      style="display:none;"
-    >
-      ⚠️ Bu tarayıcı Web Bluetooth desteklemiyor.
-      Android üzerinde Chrome kullanmanız gerekir.
-    </div>
-
-
-    <!-- İsim -->
+    <label for="employeeName">
+      Personel Adı
+    </label>
 
     <input
-      type="text"
       id="employeeName"
-      placeholder="Adınız Soyadınız"
+      type="text"
+      placeholder="Ad Soyad"
       autocomplete="name"
-      maxlength="100"
     >
-
-
-    <!-- Bluetooth -->
 
     <button
-      id="scanBtn"
+      id="connectButton"
       type="button"
     >
-      Bluetooth ile Konumu Doğrula
+      🔵 Bluetooth ile Doğrula
     </button>
 
+    <div
+      id="status"
+      class="status"
+    ></div>
 
-    <!-- Durum -->
+    <div
+      id="details"
+      class="details"
+    >
+      <div>
+        <span>Personel</span>
+        <span id="detailEmployee">-</span>
+      </div>
 
-    <div id="status"></div>
+      <div>
+        <span>Konum</span>
+        <span id="detailLocation">-</span>
+      </div>
 
+      <div>
+        <span>Kaynak</span>
+        <span id="detailSource">-</span>
+      </div>
 
-    <div class="details">
-      Bluetooth → ESP32 → Cloudflare Worker → D1
+      <div>
+        <span>Sunucu</span>
+        <span id="detailServer">-</span>
+      </div>
+    </div>
+
+    <div class="warning">
+      ⚠️ Bluetooth özelliğinin çalışması için siteyi HTTPS üzerinden
+      açmanız ve Bluetooth destekleyen bir tarayıcı kullanmanız gerekir.
+      Chrome veya Edge önerilir.
+    </div>
+
+    <div class="footer">
+      ESP32 Konum Doğrulama Sistemi
     </div>
 
   </div>
 
+</div>
 
 <script>
+"use strict";
 
 /* =========================================================
-   BLUETOOTH AYARLARI
+   AYARLAR
    ========================================================= */
 
+/*
+ * Cloudflare Worker /checkin endpoint'i
+ */
+const CHECKIN_ENDPOINT =
+  "https://esp32-checkin-backend.erenkaraca2005.workers.dev/checkin";
+
+/*
+ * Cloudflare Worker /checkins endpoint'i
+ */
+const CHECKINS_ENDPOINT =
+  "https://esp32-checkin-backend.erenkaraca2005.workers.dev/checkins";
+
+/*
+ * ESP32 UART BLE Service UUID
+ */
 const SERVICE_UUID =
   "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 
+/*
+ * ESP32'nin konum bilgisini gönderdiği characteristic
+ */
 const LOCATION_CHAR_UUID =
   "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
-
-
-/* =========================================================
-   CLOUDFLARE WORKER
-   ========================================================= */
-
-const CHECKIN_ENDPOINT =
-  "https://esp32-checkin-backend.erenkaraca2005.workers.dev/checkin";
 
 
 /* =========================================================
    HTML ELEMANLARI
    ========================================================= */
 
-const scanBtn =
-  document.getElementById("scanBtn");
-
-const statusEl =
-  document.getElementById("status");
-
-const nameInput =
+const employeeNameInput =
   document.getElementById("employeeName");
 
-const compatWarning =
-  document.getElementById("compatWarning");
+const connectButton =
+  document.getElementById("connectButton");
+
+const statusBox =
+  document.getElementById("status");
+
+const detailsBox =
+  document.getElementById("details");
+
+const detailEmployee =
+  document.getElementById("detailEmployee");
+
+const detailLocation =
+  document.getElementById("detailLocation");
+
+const detailSource =
+  document.getElementById("detailSource");
+
+const detailServer =
+  document.getElementById("detailServer");
 
 
 /* =========================================================
    DURUM MESAJI
    ========================================================= */
 
-function setStatus(message, type) {
+function setStatus(message, type = "info") {
 
-  statusEl.textContent = message;
+  statusBox.className = "status " + type;
 
-  statusEl.className = type;
-
+  statusBox.textContent = message;
 }
 
 
 /* =========================================================
-   TARAYICI KONTROLLERİ
+   DETAYLARI GÖSTER
    ========================================================= */
 
-if (!window.isSecureContext) {
+function showDetails(employee, location, source) {
 
-  setStatus(
-    "❌ Bu sayfa HTTPS üzerinden açılmalıdır. Web Bluetooth güvenli bağlantı gerektirir.",
-    "err"
+  detailEmployee.textContent =
+    employee || "-";
+
+  detailLocation.textContent =
+    location || "-";
+
+  detailSource.textContent =
+    source || "-";
+
+  detailServer.textContent =
+    "Cloudflare Worker + D1";
+
+  detailsBox.style.display = "block";
+}
+
+
+/* =========================================================
+   DETAYLARI TEMİZLE
+   ========================================================= */
+
+function clearDetails() {
+
+  detailsBox.style.display = "none";
+
+  detailEmployee.textContent = "-";
+  detailLocation.textContent = "-";
+  detailSource.textContent = "-";
+  detailServer.textContent = "-";
+}
+
+
+/* =========================================================
+   TARAYICI KONTROLÜ
+   ========================================================= */
+
+function checkBrowserSupport() {
+
+  if (!window.isSecureContext) {
+
+    setStatus(
+      "❌ Güvenli bağlantı gerekli.\n\n" +
+      "Bu sayfayı HTTPS üzerinden açın.\n" +
+      "Örneğin GitHub Pages kullanabilirsiniz.",
+      "error"
+    );
+
+    return false;
+  }
+
+  if (!navigator.bluetooth) {
+
+    setStatus(
+      "❌ Bu tarayıcı Web Bluetooth desteklemiyor.\n\n" +
+      "Google Chrome veya Microsoft Edge kullanın.",
+      "error"
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+
+/* =========================================================
+   UTF-8 / TEXT DECODER
+   ========================================================= */
+
+function decodeBluetoothValue(dataView) {
+
+  try {
+
+    const bytes =
+      new Uint8Array(
+        dataView.buffer,
+        dataView.byteOffset,
+        dataView.byteLength
+      );
+
+    const decoder =
+      new TextDecoder("utf-8");
+
+    return decoder
+      .decode(bytes)
+      .replace(/\0/g, "")
+      .trim();
+
+  } catch (error) {
+
+    console.error(
+      "Bluetooth veri çözümleme hatası:",
+      error
+    );
+
+    return "";
+  }
+}
+
+
+/* =========================================================
+   KONUM NORMALİZASYONU
+   ========================================================= */
+
+function normalizeLocation(rawValue) {
+
+  if (!rawValue) {
+    return "";
+  }
+
+  let value =
+    rawValue
+      .replace(/\0/g, "")
+      .trim();
+
+  /*
+   * ESP32 aşağıdakilerden birini gönderirse:
+   *
+   * SUBE_1
+   * SUBE_ALANYA_1
+   * {"location":"SUBE_1"}
+   * {"locationId":"SUBE_1"}
+   *
+   * desteklemeye çalışıyoruz.
+   */
+
+  try {
+
+    const parsed =
+      JSON.parse(value);
+
+    if (
+      parsed &&
+      typeof parsed === "object"
+    ) {
+
+      if (parsed.locationId) {
+        return String(parsed.locationId).trim();
+      }
+
+      if (parsed.location) {
+        return String(parsed.location).trim();
+      }
+
+      if (parsed.location_id) {
+        return String(parsed.location_id).trim();
+      }
+    }
+
+  } catch (_) {
+    /*
+     * JSON değilse düz metin olarak devam ediyoruz.
+     */
+  }
+
+  return value;
+}
+
+
+/* =========================================================
+   CLOUDFLARE WORKER'A CHECK-IN GÖNDER
+   ========================================================= */
+
+async function sendCheckin(
+  employeeName,
+  locationId
+) {
+
+  const payload = {
+
+    employeeName:
+      employeeName,
+
+    locationId:
+      locationId,
+
+    source:
+      "web_bluetooth"
+
+  };
+
+  console.log(
+    "Cloudflare'a gönderiliyor:",
+    payload
   );
 
-}
+  /*
+   * Burada özellikle application/json kullanmıyoruz.
+   *
+   * text/plain kullanılması browser'ın CORS preflight
+   * davranışını azaltır.
+   *
+   * Worker tarafında request.json() yine JSON body'sini
+   * okuyabilir.
+   */
 
+  const response =
+    await fetch(
+      CHECKIN_ENDPOINT,
+      {
+        method: "POST",
 
-if (!navigator.bluetooth) {
+        headers: {
+          "Content-Type":
+            "text/plain;charset=UTF-8"
+        },
 
-  compatWarning.style.display =
-    "block";
+        body:
+          JSON.stringify(payload),
 
-  scanBtn.disabled =
-    true;
+        cache:
+          "no-store"
+      }
+    );
 
+  console.log(
+    "Worker HTTP status:",
+    response.status
+  );
+
+  const responseText =
+    await response.text();
+
+  console.log(
+    "Worker response:",
+    responseText
+  );
+
+  let data;
+
+  try {
+
+    data =
+      JSON.parse(responseText);
+
+  } catch (error) {
+
+    throw new Error(
+      "Sunucudan geçersiz cevap geldi:\n" +
+      responseText
+    );
+  }
+
+  if (!response.ok) {
+
+    throw new Error(
+      data.error ||
+      ("HTTP " + response.status)
+    );
+  }
+
+  if (data.ok !== true) {
+
+    throw new Error(
+      data.error ||
+      "Sunucu işlemi başarısız."
+    );
+  }
+
+  return data;
 }
 
 
 /* =========================================================
-   CHECK-IN BAŞLAT
+   BLUETOOTH DOĞRULAMA
    ========================================================= */
 
-scanBtn.addEventListener(
-  "click",
-  startCheckin
-);
-
-
-async function startCheckin() {
+async function verifyBluetooth() {
 
   const employeeName =
-    nameInput.value.trim();
-
-
-  /* İsim kontrolü */
+    employeeNameInput.value.trim();
 
   if (!employeeName) {
 
     setStatus(
-      "❌ Lütfen önce adınızı ve soyadınızı girin.",
-      "err"
+      "❌ Önce personel adını girin.",
+      "error"
     );
 
-    nameInput.focus();
+    employeeNameInput.focus();
 
     return;
   }
 
 
-  scanBtn.disabled =
-    true;
+  if (!checkBrowserSupport()) {
+    return;
+  }
 
 
-  let device =
-    null;
+  connectButton.disabled = true;
 
+  clearDetails();
+
+  setStatus(
+    "🔵 Bluetooth cihazları aranıyor...\n\n" +
+    "ESP32 cihazınızı seçin.",
+    "info"
+  );
+
+
+  let device = null;
 
   try {
 
-    /* -----------------------------------------
-       1. Bluetooth taraması
-       ----------------------------------------- */
-
-    setStatus(
-      "🔎 Yakındaki Bluetooth cihazları taranıyor...",
-      "info"
-    );
-
+    /* =====================================================
+       BLUETOOTH CİHAZINI SEÇ
+       ===================================================== */
 
     device =
       await navigator.bluetooth.requestDevice({
@@ -393,24 +668,37 @@ async function startCheckin() {
       });
 
 
-    /* -----------------------------------------
-       2. ESP32 bağlantısı
-       ----------------------------------------- */
+    console.log(
+      "Bluetooth cihazı:",
+      device
+    );
+
+
+    if (!device) {
+
+      throw new Error(
+        "Bluetooth cihazı seçilmedi."
+      );
+    }
+
 
     setStatus(
-      "🔗 ESP32 cihazına bağlanılıyor...",
+      "🔗 " +
+      (device.name || "ESP32") +
+      " cihazına bağlanılıyor...",
       "info"
     );
 
 
-    if (
-      !device.gatt
-    ) {
+    /* =====================================================
+       GATT BAĞLANTISI
+       ===================================================== */
+
+    if (!device.gatt) {
 
       throw new Error(
-        "Bluetooth GATT bağlantısı kullanılamıyor."
+        "Bu Bluetooth cihazı GATT bağlantısını desteklemiyor."
       );
-
     }
 
 
@@ -418,9 +706,21 @@ async function startCheckin() {
       await device.gatt.connect();
 
 
-    /* -----------------------------------------
-       3. Bluetooth servisi
-       ----------------------------------------- */
+    console.log(
+      "GATT bağlantısı başarılı:",
+      server
+    );
+
+
+    setStatus(
+      "📡 ESP32 Bluetooth servisi okunuyor...",
+      "info"
+    );
+
+
+    /* =====================================================
+       SERVICE
+       ===================================================== */
 
     const service =
       await server.getPrimaryService(
@@ -428,9 +728,15 @@ async function startCheckin() {
       );
 
 
-    /* -----------------------------------------
-       4. Konum karakteristiği
-       ----------------------------------------- */
+    console.log(
+      "Bluetooth service bulundu:",
+      service
+    );
+
+
+    /* =====================================================
+       CHARACTERISTIC
+       ===================================================== */
 
     const characteristic =
       await service.getCharacteristic(
@@ -438,25 +744,38 @@ async function startCheckin() {
       );
 
 
-    /* -----------------------------------------
-       5. Konumu oku
-       ----------------------------------------- */
+    console.log(
+      "Location characteristic bulundu:",
+      characteristic
+    );
+
+
+    /* =====================================================
+       DEĞERİ OKU
+       ===================================================== */
 
     const value =
       await characteristic.readValue();
 
 
-    const decoder =
-      new TextDecoder(
-        "utf-8"
-      );
+    const rawLocation =
+      decodeBluetoothValue(value);
+
+
+    console.log(
+      "ESP32 ham konum:",
+      rawLocation
+    );
 
 
     const locationId =
-      decoder
-        .decode(value)
-        .replace(/\0/g, "")
-        .trim();
+      normalizeLocation(rawLocation);
+
+
+    console.log(
+      "Normalize konum:",
+      locationId
+    );
 
 
     if (!locationId) {
@@ -464,27 +783,22 @@ async function startCheckin() {
       throw new Error(
         "ESP32 konum bilgisi boş gönderdi."
       );
-
     }
 
 
-    /* -----------------------------------------
-       6. Bluetooth başarılı
-       ----------------------------------------- */
-
     setStatus(
-      "✅ Bluetooth doğrulama başarılı.\n" +
+      "✅ Bluetooth doğrulama başarılı.\n\n" +
       "Konum: " +
       locationId +
       "\n\n" +
-      "☁️ Sunucuya gönderiliyor...",
+      "Sunucuya gönderiliyor...",
       "info"
     );
 
 
-    /* -----------------------------------------
-       7. Cloudflare Worker
-       ----------------------------------------- */
+    /* =====================================================
+       CLOUDFLARE / D1
+       ===================================================== */
 
     await sendCheckin(
       employeeName,
@@ -492,74 +806,100 @@ async function startCheckin() {
     );
 
 
-  }
+    /* =====================================================
+       BAŞARILI
+       ===================================================== */
 
-  catch (error) {
+    showDetails(
+      employeeName,
+      locationId,
+      "web_bluetooth"
+    );
+
+
+    setStatus(
+      "✅ İŞLEM BAŞARILI\n\n" +
+      "Bluetooth doğrulaması başarılı.\n" +
+      "Konum: " +
+      locationId +
+      "\n\n" +
+      "Check-in Cloudflare D1 veritabanına kaydedildi.",
+      "success"
+    );
+
+
+  } catch (error) {
 
     console.error(
-      "CHECK-IN ERROR:",
+      "Konum doğrulama hatası:",
       error
     );
 
 
+    let message =
+      error?.message ||
+      String(error);
+
+
+    /*
+     * Kullanıcı Bluetooth seçim ekranını iptal ettiyse
+     */
     if (
-      error.name ===
+      error?.name ===
       "NotFoundError"
     ) {
 
-      setStatus(
-        "❌ Bluetooth cihazı seçilmedi veya bulunamadı.",
-        "err"
-      );
-
+      message =
+        "Bluetooth cihazı seçilmedi.";
     }
 
-    else if (
-      error.name ===
-      "SecurityError"
+
+    /*
+     * Bluetooth bağlantısı reddedildiyse
+     */
+    if (
+      error?.name ===
+      "NotAllowedError"
     ) {
 
-      setStatus(
-        "❌ Bluetooth erişimi engellendi. Tarayıcı izinlerini ve HTTPS bağlantısını kontrol edin.",
-        "err"
-      );
-
+      message =
+        "Bluetooth erişimine izin verilmedi.";
     }
 
-    else if (
-      error.name ===
-      "NetworkError"
+
+    /*
+     * Network / CORS
+     */
+    if (
+      message.includes(
+        "Failed to fetch"
+      )
     ) {
 
-      setStatus(
-        "❌ Bluetooth bağlantısı sırasında ağ hatası oluştu.",
-        "err"
-      );
-
+      message =
+        "Cloudflare Worker'a bağlanılamadı.\n\n" +
+        "Kontrol edin:\n" +
+        "1. Sayfa HTTPS üzerinden açılıyor mu?\n" +
+        "2. Worker adresi doğru mu?\n" +
+        "3. Tarayıcı internet bağlantısı var mı?\n" +
+        "4. Cloudflare Worker çalışıyor mu?\n\n" +
+        "Endpoint:\n" +
+        CHECKIN_ENDPOINT;
     }
 
-    else {
 
-      setStatus(
-        "❌ " +
-        (
-          error.message ||
-          String(error)
-        ),
-        "err"
-      );
-
-    }
-
-  }
+    setStatus(
+      "❌ İŞLEM BAŞARISIZ\n\n" +
+      message,
+      "error"
+    );
 
 
-  finally {
+  } finally {
 
-    /* -----------------------------------------
-       Bluetooth bağlantısını kapat
-       ----------------------------------------- */
-
+    /*
+     * Bluetooth bağlantısını kapat.
+     */
     try {
 
       if (
@@ -570,218 +910,112 @@ async function startCheckin() {
 
         device.gatt.disconnect();
 
+        console.log(
+          "Bluetooth bağlantısı kapatıldı."
+        );
       }
 
+    } catch (disconnectError) {
+
+      console.warn(
+        "Bluetooth disconnect hatası:",
+        disconnectError
+      );
     }
 
-    catch (_) {}
 
-
-    scanBtn.disabled =
-      false;
-
+    connectButton.disabled = false;
   }
-
 }
 
 
 /* =========================================================
-   CLOUDFLARE CHECK-IN
+   BUTON
    ========================================================= */
 
-async function sendCheckin(
-  employeeName,
-  locationId
-) {
+connectButton.addEventListener(
+  "click",
+  verifyBluetooth
+);
 
 
-  const payload = {
+/* =========================================================
+   ENTER TUŞU
+   ========================================================= */
 
-    employeeName:
-      employeeName,
+employeeNameInput.addEventListener(
+  "keydown",
+  function(event) {
 
-    locationId:
-      locationId,
+    if (event.key === "Enter") {
 
-    timestamp:
-      new Date().toISOString(),
+      event.preventDefault();
 
-    source:
-      "web-bluetooth"
-
-  };
-
-
-  let response;
+      verifyBluetooth();
+    }
+  }
+);
 
 
-  try {
+/* =========================================================
+   SAYFA AÇILIŞ KONTROLÜ
+   ========================================================= */
 
-    /*
-     * ÖNEMLİ
-     *
-     * application/json yerine text/plain kullanıyoruz.
-     *
-     * Body'nin kendisi yine JSON'dur.
-     *
-     * Cloudflare Worker tarafında:
-     *
-     * await request.json()
-     *
-     * bunu okuyabilir.
-     *
-     * text/plain kullanılması tarayıcı tarafındaki
-     * CORS preflight sorununu azaltır.
-     */
+window.addEventListener(
+  "load",
+  function() {
 
-    response =
-      await fetch(
-        CHECKIN_ENDPOINT,
-        {
+    console.log(
+      "ESP32 Konum Doğrulama başlatıldı."
+    );
 
-          method:
-            "POST",
+    console.log(
+      "Worker:",
+      CHECKIN_ENDPOINT
+    );
 
-          headers: {
+    console.log(
+      "Bluetooth Service:",
+      SERVICE_UUID
+    );
 
-            "Content-Type":
-              "text/plain;charset=UTF-8"
+    console.log(
+      "Location Characteristic:",
+      LOCATION_CHAR_UUID
+    );
 
-          },
 
-          body:
-            JSON.stringify(
-              payload
-            ),
+    if (!window.isSecureContext) {
 
-          cache:
-            "no-store"
-
-        }
+      setStatus(
+        "⚠️ Bu sayfa HTTPS üzerinden açılmalı.\n\n" +
+        "GitHub Pages kullanıyorsanız adresin https:// ile başladığından emin olun.",
+        "error"
       );
 
-  }
+      return;
+    }
 
-  catch (networkError) {
 
-    console.error(
-      "WORKER FETCH ERROR:",
-      networkError
+    if (!navigator.bluetooth) {
+
+      setStatus(
+        "⚠️ Web Bluetooth desteklenmiyor.\n\n" +
+        "Google Chrome veya Microsoft Edge kullanın.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    setStatus(
+      "Hazır.\n\n" +
+      "Personel adını girin ve Bluetooth ile doğrulamayı başlatın.",
+      "info"
     );
-
-
-    throw new Error(
-      "Sunucuya bağlanılamadı: " +
-      (
-        networkError.message ||
-        "Failed to fetch"
-      )
-    );
-
   }
-
-
-  /* =====================================================
-     SUNUCU CEVABI
-     ===================================================== */
-
-  const responseText =
-    await response.text();
-
-
-  let data =
-    null;
-
-
-  try {
-
-    data =
-      responseText
-        ? JSON.parse(
-            responseText
-          )
-        : null;
-
-  }
-
-  catch (_) {
-
-    data =
-      null;
-
-  }
-
-
-  /* =====================================================
-     HTTP HATASI
-     ===================================================== */
-
-  if (
-    !response.ok
-  ) {
-
-    throw new Error(
-
-      (
-        data &&
-        data.error
-      )
-
-      ||
-
-      (
-        "Sunucu hatası: HTTP " +
-        response.status
-      )
-
-    );
-
-  }
-
-
-  /* =====================================================
-     API BAŞARI KONTROLÜ
-     ===================================================== */
-
-  if (
-    !data ||
-    data.ok !== true
-  ) {
-
-    throw new Error(
-
-      (
-        data &&
-        data.error
-      )
-
-      ||
-
-      "Sunucu geçerli bir başarı yanıtı vermedi."
-
-    );
-
-  }
-
-
-  /* =====================================================
-     BAŞARILI
-     ===================================================== */
-
-  setStatus(
-
-    "✅ CHECK-IN BAŞARILI!\n\n" +
-    "Personel: " +
-    employeeName +
-    "\n" +
-    "Konum: " +
-    locationId,
-
-    "ok"
-
-  );
-
-}
+);
 
 </script>
 
