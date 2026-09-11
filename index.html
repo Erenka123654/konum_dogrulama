@@ -336,9 +336,15 @@ function setStatus(message, type = "info") {
  * ============================================================
  */
 
+function getLocationName(locationId) {
+  return locationId === "SUBE_1"
+    ? "Başkent Üniversitesi Alanya Hastanesi"
+    : locationId;
+}
+
 function showLocation(locationId) {
   locationBox.classList.remove("hidden");
-  locationValue.textContent = locationId;
+  locationValue.textContent = getLocationName(locationId);
 }
 
 
@@ -577,7 +583,7 @@ async function connectBluetooth() {
 
     setStatus(
       "✅ Bluetooth konumu doğrulandı.\n\n" +
-      "Konum: " + locationId +
+      "Konum: " + getLocationName(locationId) +
       "\n\n" +
       "Check-in sunucuya gönderiliyor...",
       "info"
@@ -609,7 +615,7 @@ async function connectBluetooth() {
       result.employeeName +
       "\n" +
       "Konum: " +
-      result.locationId +
+      getLocationName(result.locationId) +
       "\n" +
       "Kaynak: " +
       result.source,
@@ -765,3 +771,4 @@ if (!window.isSecureContext) {
 <script src="web/distance.js"></script>
 </body>
 </html>
+
