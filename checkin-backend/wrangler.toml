@@ -1,0 +1,8 @@
+name = "esp32-checkin-backend"
+main = "src/index.js"
+compatibility_date = "2024-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "esp32-checkin-db"
+database_id = "f639b066-4dde-4870-8bb1-06683f618a93"

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konum Doğrulamalı Check-in</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+  }
+  .card {
+    background: #1e293b;
+    border-radius: 16px;
+    padding: 32px 24px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p.sub { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
+  input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 15px;
+    margin-bottom: 16px;
+  }
+  button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+  #scanBtn { background: #3b82f6; color: white; }
+  #scanBtn:disabled { background: #475569; cursor: not-allowed; }
+  #status {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none;
+  }
+  .ok { background: #14532d; color: #bbf7d0; display: block !important; }
+  .err { background: #7f1d1d; color: #fecaca; display: block !important; }
+  .info { background: #1e3a5f; color: #bfdbfe; display: block !important; }
+  .warn-box {
+    background: #422006;
+    color: #fde68a;
+    font-size: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>📍 Konum Doğrulamalı Check-in</h1>
+  <p class="sub">Bulunduğunuz konumdaki cihaza Bluetooth ile bağlanarak yoklamanızı onaylayın.</p>
+
+  <div class="warn-box" id="compatWarning" style="display:none;">
+    ⚠️ Bu tarayıcı Web Bluetooth desteklemiyor (örn. iPhone Safari). Lütfen Android'de Chrome kullanın.
+  </div>
+
+  <input type="text" id="employeeName" placeholder="Adınız Soyadınız">
+
+  <button id="scanBtn">Bluetooth ile Konumu Doğrula</button>
+
+  <div id="status"></div>
+</div>
+
+<script>
+const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const LOCATION_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+
+// Backend endpoint - kendi Cloudflare Worker / API adresinizle değiştirin
+const CHECKIN_ENDPOINT = "https://api.sizin-alan-adiniz.com/checkin";
+
+const scanBtn = document.getElementById("scanBtn");
+const statusEl = document.getElementById("status");
+const nameInput = document.getElementById("employeeName");
+const compatWarning = document.getElementById("compatWarning");
+
+function setStatus(message, type) {
+  statusEl.textContent = message;
+  statusEl.className = type;
+}
+
+if (!navigator.bluetooth) {
+  compatWarning.style.display = "block";
+  scanBtn.disabled = true;
+}
+
+scanBtn.addEventListener("click", async () => {
+  const employeeName = nameInput.value.trim();
+  if (!employeeName) {
+    setStatus("Lütfen önce adınızı girin.", "err");
+    return;
+  }
+
+  try {
+    setStatus("Yakındaki cihazlar taranıyor... (tarayıcı açılan listeden cihazı seçmenizi isteyecek)", "info");
+
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [SERVICE_UUID] }]
+    });
+
+    setStatus("Cihaza bağlanılıyor: " + device.name + " ...", "info");
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+    const characteristic = await service.getCharacteristic(LOCATION_CHAR_UUID);
+    const value = await characteristic.readValue();
+
+    const decoder = new TextDecoder("utf-8");
+    const locationId = decoder.decode(value);
+
+    setStatus("Konum doğrulandı: " + locationId + ". Check-in gönderiliyor...", "info");
+
+    await sendCheckin(employeeName, locationId);
+
+    device.gatt.disconnect();
+
+  } catch (error) {
+    console.error(error);
+    if (error.name === "NotFoundError") {
+      setStatus("Cihaz seçilmedi veya bulunamadı. Konum cihazına (beacon) yakın olduğunuzdan emin olun.", "err");
+    } else {
+      setStatus("Hata: " + error.message, "err");
+    }
+  }
+});
+
+async function sendCheckin(employeeName, locationId) {
+  try {
+    const response = await fetch(CHECKIN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employeeName: employeeName,
+        locationId: locationId,
+        timestamp: new Date().toISOString()
+      })
+    });
+
+    if (!response.ok) throw new Error("Sunucu hatası: " + response.status);
+
+    setStatus("✅ Check-in başarılı! Konum: " + locationId, "ok");
+  } catch (err) {
+    // Backend henüz kurulmadıysa da kullanıcı Bluetooth doğrulamasının çalıştığını görsün
+    setStatus("Bluetooth doğrulama başarılı (Konum: " + locationId + ") ancak sunucuya gönderilemedi: " + err.message, "err");
+  }
+}
+</script>
+</body>
+</html>
