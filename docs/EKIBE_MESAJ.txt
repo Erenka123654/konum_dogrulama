@@ -1,0 +1,9 @@
+Merhaba,
+
+ESP32 ESP-32S kartıyla personel giriş/çıkış işlemlerinde Bluetooth üzerinden cihaz doğrulaması için hazırlanan entegrasyon paketini paylaşıyorum.
+
+Pakette ESP32 firmware'i, örnek Cloudflare Worker/D1 sunucusu, web demo, BLE/API protokolü ve saha kabul testleri bulunuyor. Teknik incelemeye docs/BILGI_ISLEM_TESLIM.md dosyasından başlayabilirsiniz.
+
+Bu çalışma bağımsız test projesidir; hastanenin /pdks/scan sayfasına veya gerçek mesai kayıtlarına bağlı değildir. Mevcut PDKS oturumu ve kayıt işlemiyle entegrasyonun bilgi işlem/yazılım ekibi tarafından yapılması gerekiyor. Özel anahtarlar paylaşım paketinde yok; kurum test ortamında kendi anahtarlarını üretmelidir.
+
+Özellikle Android/iPhone desteği, bina dışından Bluetooth erişimi, vardiya/istisna kuralları, personel verisinin barındırılacağı ortam ve pilot kabul kriterlerinin birlikte değerlendirilmesini rica ederim.

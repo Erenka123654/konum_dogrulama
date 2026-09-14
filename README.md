@@ -1,78 +1,49 @@
-# ESP32 Bluetooth Konum Doğrulama - Check-in Sistemi
+# ESP32 PDKS entegrasyon paketi
 
-## Nasıl çalışır?
-1. Her konuma bir ESP32 yerleştirilir. ESP32, BLE üzerinden o konuma özel bir
-   `LOCATION_ID` yayınlar (GATT karakteristiği olarak).
-2. Çalışan, konuma geldiğinde web sayfasındaki "Bluetooth ile Konumu Doğrula"
-   butonuna basar.
-3. Tarayıcı (Web Bluetooth API) yakındaki ESP32'yi bulur, bağlanır, LOCATION_ID'yi
-   okur ve backend'e check-in isteği gönderir.
+**Bilgi işlem için başlangıç belgesi: [Teknik teslim](docs/BILGI_ISLEM_TESLIM.md).**
 
-## ÖNEMLİ KISITLAMA
-**Web Bluetooth API iPhone Safari'de desteklenmiyor.** Bu akış sadece
-Android + Chrome/Edge gibi tarayıcılarda çalışır. iPhone kullanıcıları için
-bu yöntem uygun değildir — onlar için QR kod tabanlı check-in akışınızı
-kullanmaya devam etmeniz gerekir.
+ESP32 ESP-32S (30 pin) ile Bluetooth bağlantısı üzerinden tek kullanımlık cihaz doğrulaması ve Cloudflare Worker + D1 üzerinde bağımsız personel giriş/çıkış demosu. Hastanenin canlı PDKS sitesi değiştirilmemiştir; kayıtlar hastaneye aktarılmaz. Paket bir entegrasyon referansıdır, saha kabulü yapılmış üretim PDKS ürünü değildir.
 
-## Kurulum
+## İçerik
 
-### 1. ESP32 Firmware
-- `firmware/ble_konum_beacon.ino` dosyasını Arduino IDE'de açın.
-- Board olarak kullandığınız ESP32 kartını seçin (Tools > Board).
-- Her fiziksel konum için dosyanın başındaki iki satırı değiştirin:
-  ```cpp
-  #define DEVICE_NAME   "Checkin-Konum-1"
-  #define LOCATION_ID   "SUBE_1"
-  ```
-- Yükleyin. Seri port monitöründe (115200 baud) "Yayın başladı" mesajını görmelisiniz.
-- 2-5 konum için bu adımı her ESP32 için ayrı ayrı tekrarlayın, her birine
-  farklı bir `LOCATION_ID` verin.
+- [BLE/API protokolü](docs/PROTOKOL.md)
+- [Kabul testleri ve sınırlar](docs/KABUL_TESTLERI.md)
+- [Test sonuçları](docs/TEST_SONUCLARI.md)
+- [ESP32 firmware](firmware/ble_konum_beacon/ble_konum_beacon.ino)
+- `web/`: aynı origin'de çalışan kullanıcı ve yönetici demosu
+- `checkin-backend/`: Worker, D1 migration ve oturum/kanıt kontrolleri
 
-### 2. Web Sayfası
-- `web/index.html` içinde `CHECKIN_ENDPOINT` değerini kendi backend adresinizle
-  değiştirin (Cloudflare Worker vb.).
-- Bu sayfa **HTTPS üzerinden** sunulmalıdır — Web Bluetooth API, güvenlik
-  gereği yalnızca HTTPS (veya localhost) üzerinde çalışır.
+## Test ortamına kurulum
 
-### 3. Backend (kendi tarafınızda kurmanız gerekiyor)
-- `POST /checkin` endpoint'i şu JSON'u kabul etmeli:
-  ```json
-  {
-    "employeeName": "Ad Soyad",
-    "locationId": "SUBE_1",
-    "timestamp": "2026-09-10T10:00:00.000Z"
-  }
-  ```
-- Bu isteği alıp veritabanınıza (örn. Cloudflare D1) kaydetmeniz yeterli.
+Gereksinimler: Node.js 24 LTS veya üzeri, Cloudflare test hesabı, Arduino IDE/CLI ve Espressif ESP32 core 3.3.11. Gerçek personel verisi kullanmadan kurum onayıyla test edin.
 
-## Test etme
-1. ESP32'yi yükleyip çalıştırın.
-2. `web/index.html` dosyasını bir HTTPS sunucusunda (veya `localhost`'ta) açın.
-3. Android telefonda Chrome ile sayfayı açın, adınızı girin, butona basın.
-4. Açılan cihaz listesinde "Checkin-Konum-1" (veya verdiğiniz isim) görünmeli —
-   seçin, bağlanın.
-5. Konum ID'sinin okunduğunu ve check-in isteğinin gönderildiğini doğrulayın.
+1. Kaynak klasöründe `npm ci` çalıştırın. `npx wrangler login` ile test hesabına giriş yapın.
+2. **Kurum için ayrı bir test D1 veritabanı oluşturun:** `npx wrangler d1 create pdks-ble-pilot`. `checkin-backend/wrangler.toml` içindeki Worker adını, database_name ve database_id değerlerini yeni test kaynaklarıyla değiştirin. Paket mevcut kullanıcının test kaynak tanımlarını içerir; bunlar hastanenin kaynakları değildir. database_name değiştirilirse package.json içindeki db komutlarını da güncelleyin.
+3. `npm run provision` çalıştırın. Bu komut rastgele cihaz anahtarı, admin geçici şifresi ve bootstrap SQL üretir. Dosyalar `.local/` ve `firmware/ble_konum_beacon/device_config.h` içine yazılır; Git tarafından hariç tutulur. Aynı yapılandırmanın üstüne otomatik yazılmaz.
+4. Oluşturulan `device_config.h` ve `.local/worker-secrets.json` içinde konum adı/kimliğini ihtiyaç halinde tutarlı biçimde düzenleyin. `.local/ilk-giris.txt` dosyasındaki geçici admin şifresini özel tutun. Anahtarı veya bu dosyaları e-posta/GitHub üzerinden paylaşmayın.
+5. Migration uygulayın: `npm run db:remote`. Mevcut test veritabanı kullanılıyorsa eski `checkins` kayıtları silinmez; yeni kayıtlar `verified_checkins` tablosuna gider.
+6. İlk admini ekleyin (aşağıdaki komutta oluşturduğunuz database_name'i kullanın):
 
-## Menzil / güvenilirlik notu
-BLE menzili ESP32'nin anten gücüne ve ortamdaki engellere (duvar, metal
-dolap vb.) göre değişir; tipik olarak 10-30 metre arasıdır. Kod, hassas
-mesafe/RSSI hesabı yapmak yerine sadece "bağlanabildi mi" kontrolü yapar —
-bu, gürültülü RSSI ölçümüne göre çok daha güvenilirdir. Menzili daraltmak
-isterseniz ESP32'nin TX güç seviyesini düşürebilirsiniz
-(`esp_ble_tx_power_set` fonksiyonu ile).
+```powershell
+npx wrangler d1 execute pdks-ble-pilot --remote --config checkin-backend/wrangler.toml --file=.local/bootstrap.sql
+npx wrangler secret bulk .local/worker-secrets.json --config checkin-backend/wrangler.toml
+```
 
-## Ana sayfada ESP32 mesafesi
+7. `npm run check`, `npm audit --omit=dev`, `npm run deploy:dry`, ardından `npm run deploy` çalıştırın. Bu son komut hem web arayüzünü hem API'yi aynı Worker adresine yayınlar. GitHub'a dosya yüklemek tek başına Worker deploy veya D1 migration yapmaz.
+8. Arduino IDE'de `firmware/ble_konum_beacon/ble_konum_beacon.ino` dosyasını açın. **ESP32 Dev Module** kartını ve doğru seri portu seçin. USB üzerinden karta yükleyin. `device_config.h` aynı klasörde olmalıdır. Hazır binary paylaşılmamıştır; her kurum kendi anahtarıyla derler.
+9. Worker adresini Android Chrome'da açın. `admin` ve geçici şifreyle giriş yapıp şifreyi değiştirin. Yönetici ekranından test personeli oluşturun. Personel ilk girişte kendi şifresini değiştirir.
+10. Personel “Mesaiye başla” düğmesinden `Checkin-Konum-1` seçer. Telefonun Bluetooth ayarlarından önceden eşleştirme gerekmez. Başarılı yanıt sonrası kayıt oluşur ve bağlantı kapanır. “Mesaiyi bitir” çıkış oluşturur.
 
-Her iki giriş sayfasında Mesafeyi göster düğmesi telefonun konum iznini ister.
-Sabit hedef: **36.547098, 31.994394**. Cihaz taşınırsa web/distance.js içindeki
- target koordinatlarını güncelleyin. Bu hedef tek ESP32 içindir; Bluetooth ile
-okunan diğer konum kimlikleri hedefi değiştirmez.
+## Yerel geliştirme
 
-Mesafe Haversine hesabıyla kuş uçuşu metre olarak güncellenir. Konum doğruluğu
-ve ölçüm saati ayrıca gösterilir. 30 saniyeden eski ölçüm güncel diye gösterilmez.
-Bu gösterge Bluetooth check-in kararını değiştirmez; telefon koordinatları
-sunucuya gönderilmez. HTTPS ve konum izni gerekir. Kapalı alanlarda ve kısa
-mesafelerde telefon konumu hassas olmayabilir.
+`npm run db:local` migration'ı yerelde uygular. Bootstrap SQL'i `--local` ile aynı veritabanına uygulayın. `.local/worker-secrets.json` içindeki DEVICE_KEYS değerini `checkin-backend/.dev.vars` dosyasına Wrangler biçiminde ekleyin. Bu dosya Git'e girmez. `npm run dev` başlatın. Çerezler Secure olduğundan gerçek cihaz testi HTTPS test Worker'ında yapılmalıdır.
 
-Yayınlarken index.html ile web/distance.js dosyasını birlikte yükleyin.
-web/ klasörünü yayınlıyorsanız içindeki index.html ve distance.js birlikte bulunmalıdır.
+## Hastanenin web sitesine entegrasyon
+
+Canlı adres `https://aln-portal.baskenthospitals.com/pdks/scan` ayrı uygulamadır. Bilgi işlem ekibi mevcut SSO/personel oturumunu, PDKS kayıt API'sini ve vardiya kurallarını kullanarak [teslim belgesindeki adaptör adımlarını](docs/BILGI_ISLEM_TESLIM.md) uygular. Demo giriş sistemini kurum SSO'sunun yerine koymayın.
+
+ESP32 internet bağlantısı gerektirmez. Telefonun internete ve Bluetooth'a erişmesi gerekir. iPhone Safari bu Web Bluetooth demosunu desteklemez. Hassas metre/oda sınırı garantisi verilmez; anahtar imzası gerçek zamanlı relay saldırısını engellemez.
+
+## Paketleme
+
+Windows PowerShell 7 ile `pwsh -File scripts/package.ps1` paylaşılabilir ZIP üretir. Kaynaklar, kilit dosyası, belgeler ve testler dahil edilir; `.local`, özel cihaz ayarları, derleme çıktıları ve bağımlılık klasörleri hariçtir. Hastane kendi anahtarlarını üretmelidir.

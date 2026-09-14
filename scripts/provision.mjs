@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { passwordHash, randomHex } from '../checkin-backend/src/crypto.js';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const dir = path.join(root, '.local');
+const header = path.join(root, 'firmware/ble_konum_beacon/device_config.h');
+if (fs.existsSync(dir) || fs.existsSync(header)) throw new Error('Yerel yapılandırma var. Mevcut anahtarlar otomatik değiştirilmez.');
+const key = randomHex(32), initialPassword = randomHex(16), salt = randomHex(16);
+const hash = await passwordHash(initialPassword, salt);
+fs.mkdirSync(dir, { mode: 0o700 });
+const write = (name, value) => fs.writeFileSync(path.join(dir, name), value, { flag: 'wx', mode: 0o600 });
+write('worker-secrets.json', JSON.stringify({ DEVICE_KEYS: JSON.stringify({ SUBE_1: { name: 'Başkent Üniversitesi Alanya Hastanesi', key } }) }, null, 2));
+write('bootstrap.sql', `INSERT INTO staff(id,username,display_name,password_hash,salt,role,created_at) VALUES ('${randomHex(16)}','admin','Yönetici','${hash}','${salt}','admin',unixepoch()) ON CONFLICT(username) DO NOTHING;\n`);
+write('ilk-giris.txt', `Kullanıcı: admin\nGeçici şifre: ${initialPassword}\nİlk girişte değiştirin. Bu dosyayı paylaşmayın.\n`);
+fs.writeFileSync(header, `#pragma once\n#define DEVICE_NAME "Checkin-Konum-1"\n#define LOCATION_ID "SUBE_1"\n#define DEVICE_KEY_HEX "${key}"\n`, { flag: 'wx', mode: 0o600 });
+console.log('Yerel anahtarlar .local/ ve device_config.h içine yazıldı. İçerikleri GitHub veya teslim ZIP dosyasına eklemeyin.');

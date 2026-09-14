@@ -1,8 +1,17 @@
 name = "esp32-checkin-backend"
 main = "src/index.js"
-compatibility_date = "2024-09-01"
+compatibility_date = "2026-09-14"
+
+[assets]
+directory = "../web"
+binding = "ASSETS"
+run_worker_first = true
+
+[triggers]
+crons = ["15 2 * * *"]
 
 [[d1_databases]]
 binding = "DB"
 database_name = "esp32-checkin-db"
 database_id = "f639b066-4dde-4870-8bb1-06683f618a93"
+migrations_dir = "migrations"

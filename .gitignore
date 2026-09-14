@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+.local/
+.dev.vars
+.env*
+firmware/ble_konum_beacon/device_config.h
+firmware/build/
+firmware/**/build/
